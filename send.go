@@ -25,7 +25,7 @@ type WriteFlusher interface {
 	http.Flusher
 }
 
-func Send(res WriteFlusher, buf *bytes.Buffer, msgNumber int, event EventName, data string) (int, error) {
+func Send(res WriteFlusher, buf *bytes.Buffer, msgNumber int, event EventName, data string) (int64, error) {
 	if buf == nil {
 		buf = bytes.NewBuffer(make([]byte, 0, 1024))
 	} else {
@@ -34,23 +34,27 @@ func Send(res WriteFlusher, buf *bytes.Buffer, msgNumber int, event EventName, d
 	if msgNumber <= 0 {
 		msgNumber = 1
 	}
-	writeMessageString(buf, msgNumber, event, data)
+	err := WriteEventString(buf, msgNumber, event, data)
+	if err != nil {
+		return 0, err
+	}
 	n, err := io.Copy(res, buf)
 	if err != nil {
-		return int(n), err
+		return n, err
 	}
 	res.Flush()
-	return int(n), nil
+	return n, nil
 }
 
-func writeMessageString(buf *bytes.Buffer, msgNumber int, event EventName, data string) {
-	_, _ = buf.WriteString("id: ")
-	_, _ = buf.WriteString(strconv.Itoa(msgNumber))
-	_, _ = buf.WriteString("\n")
-	_, _ = buf.WriteString("event: ")
-	_, _ = buf.WriteString(string(event))
-	_, _ = buf.WriteString("\n")
-	_, _ = buf.WriteString("data: ")
-	_, _ = buf.WriteString(data)
-	_, _ = buf.WriteString("\n\n")
+func WriteEventString(buf io.StringWriter, msgNumber int, event EventName, data string) error {
+	for _, s := range [...]string{
+		"id: ", strconv.Itoa(msgNumber), "\n",
+		"event: ", string(event), "\n",
+		"data: ", data, "\n\n",
+	} {
+		if _, err := buf.WriteString(s); err != nil {
+			return err
+		}
+	}
+	return nil
 }
