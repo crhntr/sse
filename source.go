@@ -28,7 +28,7 @@ func NewEventSource(res http.ResponseWriter) (*EventSource, error) {
 	}, nil
 }
 
-func (src *EventSource) Send(event EventName, message string) error {
+func (src *EventSource) Send(event EventName, message string) (int, error) {
 	src.mut.Lock()
 	defer src.mut.Unlock()
 	w := src.res
@@ -36,19 +36,23 @@ func (src *EventSource) Send(event EventName, message string) error {
 		w = NewNoopWriteFlusher(io.Discard)
 	}
 	src.id++
-	_, err := Send(src.res, src.buf, src.NextEventID(), event, message)
-	return err
+	_, err := Send(src.res, src.buf, src.id, event, message)
+	return src.id, err
 }
 
-func (src *EventSource) SendJSON(event EventName, data any) error {
+func (src *EventSource) SendJSON(event EventName, data any) (int, error) {
 	if event == "" {
 		event = EventName(reflect.TypeOf(data).Name())
 	}
 	buf, err := json.Marshal(data)
 	if err != nil {
-		return err
+		return 0, err
 	}
 	return src.Send(event, string(buf))
 }
 
-func (src *EventSource) NextEventID() int { return src.id }
+func (src *EventSource) LastEventID() int {
+	src.mut.Lock()
+	defer src.mut.Unlock()
+	return src.id
+}
