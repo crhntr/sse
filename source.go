@@ -3,7 +3,6 @@ package sse
 import (
 	"bytes"
 	"encoding/json"
-	"fmt"
 	"io"
 	"net/http"
 	"reflect"
@@ -20,7 +19,7 @@ type EventSource struct {
 func NewEventSource(res http.ResponseWriter) (*EventSource, error) {
 	wf, ok := res.(WriteFlusher)
 	if !ok {
-		return nil, fmt.Errorf("http.ResponseWriter does not implement sse.WriteFlusher")
+		return nil, ErrorResponseWriterDoesNotImplementFlusher{}
 	}
 	return &EventSource{
 		buf: bytes.NewBuffer(make([]byte, 0, 1024)),
