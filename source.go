@@ -16,12 +16,13 @@ type EventSource struct {
 	res WriteFlusher
 }
 
-func NewEventSource(res http.ResponseWriter) (*EventSource, error) {
+func NewEventSource(res http.ResponseWriter, statusCode int) (*EventSource, error) {
 	wf, ok := res.(WriteFlusher)
 	if !ok {
 		return nil, ErrorResponseWriterDoesNotImplementFlusher{}
 	}
 	SetHeaders(res)
+	res.WriteHeader(statusCode)
 	return &EventSource{
 		buf: bytes.NewBuffer(make([]byte, 0, 1024)),
 		res: wf,

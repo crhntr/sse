@@ -3,6 +3,7 @@ package sse
 import (
 	"bufio"
 	"bytes"
+	"errors"
 	"io"
 	"net/http"
 	"strconv"
@@ -59,16 +60,30 @@ func WriteEventString(buf io.StringWriter, msgNumber int, event EventName, data 
 	for {
 		line, err := r.ReadString('\n')
 		if err != nil {
-			break
+			if errors.Is(err, io.EOF) {
+				if err := writeDataLine(buf, line); err != nil {
+					return err
+				}
+				_, err := buf.WriteString("\n")
+				return err
+			}
+			return err
 		}
+		if err := writeDataLine(buf, line); err != nil {
+			return err
+		}
+	}
+}
+
+func writeDataLine(buf io.StringWriter, line string) error {
+	if len(line) > 0 {
 		if err := writeEachString(buf, []string{
 			"data: ", line, "\n",
 		}); err != nil {
 			return err
 		}
 	}
-	_, err := buf.WriteString("\n")
-	return err
+	return nil
 }
 
 func writeEachString(buf io.StringWriter, strs []string) error {
