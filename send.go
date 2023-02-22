@@ -1,10 +1,12 @@
 package sse
 
 import (
+	"bufio"
 	"bytes"
 	"io"
 	"net/http"
 	"strconv"
+	"strings"
 )
 
 type EventName string
@@ -47,11 +49,30 @@ func Send(res WriteFlusher, buf *bytes.Buffer, msgNumber int, event EventName, d
 }
 
 func WriteEventString(buf io.StringWriter, msgNumber int, event EventName, data string) error {
-	for _, s := range [...]string{
+	if err := writeEachString(buf, []string{
 		"id: ", strconv.Itoa(msgNumber), "\n",
 		"event: ", string(event), "\n",
-		"data: ", data, "\n\n",
-	} {
+	}); err != nil {
+		return err
+	}
+	r := bufio.NewReader(strings.NewReader(data))
+	for {
+		line, err := r.ReadString('\n')
+		if err != nil {
+			break
+		}
+		if err := writeEachString(buf, []string{
+			"data: ", line, "\n",
+		}); err != nil {
+			return err
+		}
+	}
+	_, err := buf.WriteString("\n")
+	return err
+}
+
+func writeEachString(buf io.StringWriter, strs []string) error {
+	for _, s := range strs {
 		if _, err := buf.WriteString(s); err != nil {
 			return err
 		}

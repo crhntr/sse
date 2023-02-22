@@ -21,6 +21,7 @@ func NewEventSource(res http.ResponseWriter) (*EventSource, error) {
 	if !ok {
 		return nil, ErrorResponseWriterDoesNotImplementFlusher{}
 	}
+	SetHeaders(res)
 	return &EventSource{
 		buf: bytes.NewBuffer(make([]byte, 0, 1024)),
 		res: wf,
